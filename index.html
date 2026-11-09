@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFD24A">
 <title>大会逛展地图</title>
 <style>
 :root{
@@ -11,75 +14,98 @@
   --c-ground:#ECEEF0; --c-road:#C9CDD3; --c-shadow:rgba(185,179,199,.45);
   --c-text:#5A4A3C;
   --font-round:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',-apple-system,sans-serif;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:var(--font-round);color:var(--c-text);
-  background:linear-gradient(180deg,#EAF4FB 0%,var(--c-ground) 40%,#E4E7EA 100%)}
-body::before{content:'';position:fixed;top:0;left:0;right:0;height:100%;pointer-events:none;
-  background:radial-gradient(600px 200px at 20% 8%,rgba(255,255,255,.9),transparent 70%),
-             radial-gradient(500px 160px at 80% 6%,rgba(110,198,240,.25),transparent 70%)}
+  background:#E8EAED}
 
-/* ===== 顶栏 & 面包屑 ===== */
-header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;gap:10px;
-  padding:12px 16px;flex-wrap:wrap}
-.logo{display:flex;align-items:center;gap:8px;background:var(--c-yellow);border-radius:999px;
-  padding:8px 18px;font-weight:800;font-size:17px;box-shadow:0 4px 0 rgba(0,0,0,.06),0 8px 20px var(--c-shadow)}
-.logo .dot{width:14px;height:14px;border-radius:50%;background:var(--c-white);box-shadow:inset -3px -3px 0 rgba(0,0,0,.08)}
-.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.crumb{background:var(--c-white);border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px;
-  cursor:pointer;box-shadow:0 3px 10px var(--c-shadow);transition:.18s;border:2px solid transparent}
-.crumb:hover{transform:translateY(-2px)}
+/* ===== 顶栏 & 面包屑（竖屏：两行堆叠，含安全区；宽度对齐 9:16 舞台） ===== */
+header{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:50;
+  width:min(100vw,calc(100vh*9/16),562px);
+  padding:calc(10px + var(--safe-top)) 14px 8px;
+  background:linear-gradient(180deg,rgba(234,244,251,.92) 0%,rgba(234,244,251,0) 100%);
+  display:flex;flex-direction:column;gap:8px;pointer-events:none}
+header .hrow,header .crumbs{pointer-events:auto}
+.hrow{display:flex;align-items:center;gap:8px}
+.logo{display:flex;align-items:center;gap:7px;background:var(--c-yellow);border-radius:999px;
+  padding:7px 15px;font-weight:800;font-size:15px;box-shadow:0 4px 0 rgba(0,0,0,.06),0 8px 20px var(--c-shadow);flex:none}
+.logo .dot{width:12px;height:12px;border-radius:50%;background:var(--c-white);box-shadow:inset -3px -3px 0 rgba(0,0,0,.08)}
+.back-btn{width:38px;height:38px;border-radius:50%;background:var(--c-white);border:none;
+  font-size:17px;font-weight:800;color:var(--c-text);box-shadow:0 3px 10px var(--c-shadow);cursor:pointer;
+  display:none;align-items:center;justify-content:center;flex:none;font-family:inherit}
+.back-btn.show{display:flex}
+.hint{margin-left:auto;background:rgba(255,255,255,.85);border-radius:999px;padding:6px 12px;
+  font-size:11px;font-weight:600;color:#8a7a6a;box-shadow:0 3px 10px var(--c-shadow);white-space:nowrap}
+.crumbs{display:flex;align-items:center;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;padding:2px 0 4px}
+.crumbs::-webkit-scrollbar{display:none}
+.crumb{background:var(--c-white);border-radius:999px;padding:6px 14px;font-weight:700;font-size:12px;
+  cursor:pointer;box-shadow:0 3px 10px var(--c-shadow);transition:.18s;border:2px solid transparent;flex:none}
+.crumb:active{transform:scale(.94)}
 .crumb.active{background:var(--c-green);color:#fff;border-color:var(--c-green3)}
-.crumb-sep{color:#b7a89a;font-weight:800}
-.hint{margin-left:auto;background:rgba(255,255,255,.85);border-radius:999px;padding:7px 14px;
-  font-size:12px;font-weight:600;color:#8a7a6a;box-shadow:0 3px 10px var(--c-shadow)}
+.crumb-sep{color:#b7a89a;font-weight:800;flex:none}
 
-/* ===== 场景容器（等距画布） ===== */
-#scene{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;cursor:grab}
+/* ===== 场景容器：固定 9:16 竖屏画布 ===== */
+#scene{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;cursor:grab;
+  background:linear-gradient(180deg,#EAF4FB 0%,#ECEEF0 45%,#E4E7EA 100%)}
 #scene.drag{cursor:grabbing}
-#world{position:relative;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.34,1.4,.5,1)}
+#stage{position:relative;width:min(100vw,calc(100vh*9/16),562px);height:min(100vh,calc(100vw*16/9),1000px);
+  overflow:hidden;border-radius:0;box-shadow:0 0 0 100vmax #E8EAED;z-index:1}
+@media (min-width:600px) and (min-height:700px){#stage{border-radius:28px;
+  box-shadow:0 0 0 100vmax #E8EAED,0 24px 60px rgba(90,74,60,.18)}}
+#world{position:absolute;transform-origin:50% 50%;transition:left .4s,top .4s}
+#world::after{content:'';position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;
+  background:radial-gradient(120% 60% at 30% 6%,rgba(255,255,255,.85),transparent 60%),
+             radial-gradient(100% 40% at 75% 4%,rgba(110,198,240,.22),transparent 65%)}
 
 /* 等距瓦片：菱形地块，两块瓦(左半/右半)拼成菱形面 */
 .tile{position:absolute;cursor:pointer;transition:transform .25s cubic-bezier(.34,1.56,.64,1),filter .25s}
-.tile:hover{transform:translateZ(0) scale(1.06);filter:brightness(1.05)}
-.tile:active{transform:scale(.96)}
+.tile:active{transform:scale(.93);filter:brightness(1.06)}
 .tile .roof{position:absolute;pointer-events:none}
 
 /* 展开动画 */
 .pop{animation:pop .45s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes pop{0%{transform:scale(.3) translateY(-60px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
 
-/* ===== 底部信息条 ===== */
-footer{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-content:center;gap:10px;
-  padding:14px;flex-wrap:wrap;pointer-events:none}
-.legend{background:rgba(255,255,255,.92);border-radius:18px;padding:10px 18px;font-size:12px;font-weight:700;
-  box-shadow:0 6px 18px var(--c-shadow);pointer-events:auto;display:flex;gap:14px;align-items:center}
-.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+/* ===== 底部信息条（竖屏：贴安全区底部；宽度对齐舞台） ===== */
+footer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:50;display:flex;justify-content:center;gap:10px;
+  width:min(100vw,calc(100vh*9/16),562px);
+  padding:10px 14px calc(12px + var(--safe-bottom));flex-wrap:nowrap;pointer-events:none}
+.legend{background:rgba(255,255,255,.92);border-radius:18px;padding:8px 14px;font-size:11px;font-weight:700;
+  box-shadow:0 6px 18px var(--c-shadow);pointer-events:auto;display:flex;gap:10px;align-items:center;
+  max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.legend::-webkit-scrollbar{display:none}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;flex:none}
 
-/* ===== 展位详情弹层 ===== */
+/* ===== 展位详情弹层（手机底部抽屉） ===== */
 #modal-mask{position:fixed;inset:0;background:rgba(90,74,60,.28);backdrop-filter:blur(3px);
   z-index:100;display:none;align-items:flex-end;justify-content:center}
 #modal-mask.show{display:flex}
-#modal{background:var(--c-white);border-radius:28px 28px 0 0;max-width:480px;width:100%;
-  padding:24px 24px 34px;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.4,.5,1);
-  box-shadow:0 -10px 40px rgba(0,0,0,.12)}
+#modal{background:var(--c-white);border-radius:28px 28px 0 0;
+  width:min(100%,562px,calc(100vh*9/16));
+  padding:20px 20px calc(28px + var(--safe-bottom));
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.4,.5,1);
+  box-shadow:0 -10px 40px rgba(0,0,0,.12);touch-action:none}
 #modal-mask.show #modal{transform:translateY(0)}
-#modal .m-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-#modal .m-badge{width:56px;height:56px;border-radius:18px;background:var(--c-yellow);
-  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
-  box-shadow:0 6px 0 rgba(0,0,0,.06);flex:none}
-#modal .m-name{font-size:20px;font-weight:800}
-#modal .m-tag{font-size:12px;font-weight:700;color:#fff;border-radius:999px;padding:3px 12px;margin-top:4px;display:inline-block}
-#modal .m-desc{font-size:13.5px;line-height:1.8;color:#7a6a5a;background:var(--c-cream);
-  border-radius:16px;padding:14px 16px;margin-bottom:16px}
+#modal .m-grab{width:44px;height:5px;border-radius:99px;background:#ddd6c9;margin:0 auto 14px}
+#modal .m-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+#modal .m-badge{width:52px;height:52px;border-radius:16px;background:var(--c-yellow);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 5px 0 rgba(0,0,0,.06);flex:none}
+#modal .m-name{font-size:18px;font-weight:800}
+#modal .m-tag{font-size:11px;font-weight:700;color:#fff;border-radius:999px;padding:3px 11px;margin-top:4px;display:inline-block}
+#modal .m-desc{font-size:13px;line-height:1.75;color:#7a6a5a;background:var(--c-cream);
+  border-radius:16px;padding:13px 15px;margin-bottom:15px}
 #modal .m-actions{display:flex;gap:10px}
-#modal .m-actions button{flex:1;border:none;border-radius:16px;padding:13px;font-size:14px;font-weight:800;
-  cursor:pointer;font-family:inherit;transition:.15s}
+#modal .m-actions button{flex:1;border:none;border-radius:16px;padding:14px;font-size:14px;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:.15s;touch-action:manipulation}
 #modal .m-actions button:active{transform:scale(.96)}
 .btn-primary{background:var(--c-yellow);color:var(--c-text);box-shadow:0 5px 0 #e0af2e}
 .btn-ghost{background:var(--c-cream);color:var(--c-text);box-shadow:0 5px 0 #eadfcb}
-#modal .m-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border-radius:50%;
-  background:var(--c-ground);border:none;font-size:16px;font-weight:800;color:var(--c-text);cursor:pointer}
+#modal .m-close{position:absolute;right:16px;top:38px;width:34px;height:34px;border-radius:50%;
+  background:var(--c-ground);border:none;font-size:15px;font-weight:800;color:var(--c-text);cursor:pointer}
 
 /* 出租车 & 装饰动画 */
 @keyframes drive{0%{left:-8%}100%{left:108%}}
@@ -90,17 +116,21 @@ footer{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-co
 <body>
 
 <header>
-  <div class="logo"><span class="dot"></span><span id="logo-text">大会逛展地图</span></div>
+  <div class="hrow">
+    <div class="logo"><span class="dot"></span><span id="logo-text">大会逛展地图</span></div>
+    <button class="back-btn" id="back-btn" aria-label="返回">‹</button>
+    <div class="hint" id="hint">点击场馆进入</div>
+  </div>
   <nav class="crumbs" id="crumbs"></nav>
-  <div class="hint" id="hint">点击场馆进入 · 拖动查看全图</div>
 </header>
 
-<div id="scene"><div id="world"></div></div>
+<div id="scene"><div id="stage"><div id="world"></div></div></div>
 
 <footer><div class="legend" id="legend"></div></footer>
 
 <div id="modal-mask">
   <div id="modal" style="position:relative">
+    <div class="m-grab"></div>
     <button class="m-close" onclick="closeModal()">✕</button>
     <div class="m-top">
       <div class="m-badge" id="m-badge">A1</div>
@@ -230,6 +260,21 @@ function car(top,dur,delay){
 const world=document.getElementById('world');
 const sceneEl=document.getElementById('scene');
 let state={hall:null,zone:null};
+const isMobile=true; /* H5 固定竖屏 9:16 布局 */
+const isTouch='ontouchstart' in window||matchMedia('(pointer:coarse)').matches;
+
+/* 返回按钮 */
+const backBtn=document.getElementById('back-btn');
+backBtn.onclick=()=>{
+  if(state.zone){state.zone=null}
+  else if(state.hall){state.hall=null}
+  render();
+};
+function updateBackBtn(){
+  const show=!!(state.hall||state.zone);
+  backBtn.classList.toggle('show',show);
+  backBtn.textContent=state.zone?'‹':(state.hall?'‹':'');
+}
 
 function setTitle(){
   const lt=document.getElementById('logo-text');
@@ -254,8 +299,10 @@ function setLegend(items){
   document.getElementById('legend').innerHTML=items.map(i=>`<span><i style="background:${i.c}"></i>${i.n}</span>`).join('');
 }
 
-/* --- 布局计算 & 通用网格绘制 --- */
-function gridLayout(count,cols,cellW,cellH,gapX,gapY){
+/* --- 布局计算 & 通用网格绘制 ---
+   竖屏手机：2列窄排布；宽屏：原5列 */
+function gridLayout(count,cellW,cellH,gapX,gapY){
+  const cols=isMobile?2:5;
   const rows=Math.ceil(count/cols);
   const pos=[];let k=0;
   for(let gy=rows-1;gy>=0;gy--)for(let gx=0;gx<cols;gx++){
@@ -269,17 +316,18 @@ function gridLayout(count,cols,cellW,cellH,gapX,gapY){
   return {pos:pos.map(p=>({x:p.x-minX+cellW+60,y:p.y-minY+cellH+40})),W,H,cols,rows};
 }
 /* 画格间道路（同行相邻 + 行间首列连接，形成回廊动线） */
-function roadsHTML(L){
+function roadsHTML(L,cell){
+  const c=cell||150;
   let html='';
   for(let i=0;i<L.pos.length;i++){
-    const r=Math.floor(i/L.cols),c=i%L.cols;
-    if(c<L.cols-1&&i+1<L.pos.length){
+    const r=Math.floor(i/L.cols),cl=i%L.cols;
+    if(cl<L.cols-1&&i+1<L.pos.length){
       const a=L.pos[i],b=L.pos[i+1];
-      html+=roadEl(a.x+40,a.y+20,b.x+40,b.y+20,26);
+      html+=roadEl(a.x+c/3,a.y+c*0.14,b.x+c/3,b.y+c*0.14,24);
     }
     if(r<L.rows-1&&L.pos[i+L.cols]){
       const a=L.pos[i],b=L.pos[i+L.cols];
-      html+=roadEl(a.x+40,a.y+20,b.x+40,b.y+40-20,26);
+      html+=roadEl(a.x+c/3,a.y+c*0.14,b.x+c/3,b.y+c*0.14,24);
     }
   }
   return html;
@@ -287,7 +335,8 @@ function roadsHTML(L){
 
 function render(){
   world.innerHTML='';
-  renderCrumbs();setTitle();
+  world.dataset.px=0;world.dataset.py=0;
+  renderCrumbs();setTitle();updateBackBtn();
   if(!state.hall) renderOverview();
   else if(!state.zone) renderHall();
   else renderZone();
@@ -297,20 +346,25 @@ function render(){
 function fitWorld(){
   const L=world.dataset;
   const W=+L.w||1200,H=+L.h||800;
-  const s=Math.min(sceneEl.clientWidth/(W+80),sceneEl.clientHeight/(H+120),1.25);
+  const s=Math.min(stage.clientWidth/(W+40),stage.clientHeight/(H+60),1.15);
+  world.dataset.scale=s;
   world.style.width=W+'px';world.style.height=H+'px';
-  world.style.transform=`scale(${s})`;
+  /* 内容在舞台中水平+垂直居中 */
+  world.style.left=((stage.clientWidth-W)/2)+'px';
+  world.style.top=((stage.clientHeight-H)/2)+'px';
+  applyTransform();
 }
 window.addEventListener('resize',fitWorld);
 
-/* --- 层级1：总览（3馆） --- */
+/* --- 层级1：总览（3馆，竖屏纵向排布） --- */
 function renderOverview(){
-  setHint('点击场馆进入 · 拖动查看全图');
+  setHint('点击场馆进入');
   setLegend([{c:'#FFD24A',n:'A馆 智能科技'},{c:'#A8E063',n:'B馆 绿色生活'},{c:'#6EC6F0',n:'C馆 文化创意'}]);
-  const cell=180; // 地块尺寸
-  const L={pos:[
-    isoPos(0,1.9),isoPos(1.4,1.9),isoPos(2.8,1.9),
-  ].map(p=>({x:p.x,y:p.y})),cols:3};
+  const cell=isMobile?170:180; // 地块尺寸
+  const L={pos:isMobile?
+    [isoPos(0,3.1),isoPos(0,1.9),isoPos(0,0.7)]:          /* 竖屏：三馆纵向 */
+    [isoPos(0,1.9),isoPos(1.4,1.9),isoPos(2.8,1.9)],     /* 横屏：三馆横向 */
+    cols:3};
   const xs=L.pos.map(p=>p.x),ys=L.pos.map(p=>p.y);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const W=maxX-minX+cell*2.4,H=maxY-minY+cell*1.9;
@@ -336,7 +390,7 @@ function renderOverview(){
         <div style="background:#fff;border-radius:14px;padding:6px 16px;font-weight:800;font-size:15px;
           box-shadow:0 4px 10px var(--c-shadow);white-space:nowrap">${h.name}</div>
         <div style="margin-top:6px;background:${h.color2};color:#fff;border-radius:999px;padding:3px 14px;
-          font-size:11px;font-weight:800;display:inline-block;box-shadow:0 3px 8px var(--c-shadow)">${h.tag} · 10个区域 · 100个展位</div>
+          font-size:11px;font-weight:800;display:inline-block;box-shadow:0 3px 8px var(--c-shadow)">${h.tag} · 10区 · 100展位</div>
       </div>
     </div>`;
   });
@@ -349,13 +403,13 @@ function renderOverview(){
 /* --- 层级2：馆内10区域 --- */
 function renderHall(){
   const h=state.hall;
-  setHint('点击区域查看展位 · 顶部面包屑可返回');
+  setHint('点区域看展位');
   setLegend([{c:h.color,n:`${h.id}馆 · ${h.tag}`},{c:'#C9CDD3',n:'参观动线'}]);
-  const cell=150;
+  const cell=isMobile?130:150;
   const zones=zonesOf(h.id);
-  const L=gridLayout(10,5,cell,cell*0.66,0.55,0.55);
+  const L=gridLayout(10,cell,cell*0.66,0.55,0.55);
   world.dataset.w=L.W;world.dataset.h=L.H;
-  let html=svgDefs()+roadsHTML(L);
+  let html=svgDefs()+roadsHTML(L,cell);
   /* 动线车 */
   html+=car(L.H*0.55,18,1)+tree(L.W*0.06,L.H*0.1,1)+tree(L.W*0.92,L.H*0.15,0.9)+tree(L.W*0.5,L.H*0.02,1.1);
   zones.forEach((z,i)=>{
@@ -364,7 +418,7 @@ function renderHall(){
       animation-delay:${i*0.05}s;z-index:${20+i}">
       ${tileFace(z.color,shadeColor(z.color,-8))}
       <div class="roof" style="left:50%;top:46%;transform:translate(-50%,-50%)">
-        ${building(z.color,ZONE_ROOFS[i],56)}
+        ${building(z.color,ZONE_ROOFS[i],isMobile?48:56)}
       </div>
       <div style="position:absolute;left:50%;top:80%;transform:translate(-50%,-50%);pointer-events:none">
         <div style="background:#fff;border-radius:12px;padding:4px 12px;font-weight:800;font-size:12.5px;
@@ -382,13 +436,13 @@ const ZONE_ROOFS=['🏠','⚙️','🦾','🔋','🧴','♻️','🖼️','🕹�
 /* --- 层级3：区域10展位 --- */
 function renderZone(){
   const z=state.zone;
-  setHint('点击展位查看详情 · 面包屑返回上级');
+  setHint('点展位看详情');
   setLegend([{c:z.color,n:`${z.id}区 · 10个展位`},{c:'#C9CDD3',n:'步行道'}]);
   const booths=boothsOf(z);
-  const cell=120;
-  const L=gridLayout(10,5,cell,cell*0.66,0.5,0.5);
+  const cell=isMobile?115:120;
+  const L=gridLayout(10,cell,cell*0.66,0.5,0.5);
   world.dataset.w=L.W;world.dataset.h=L.H;
-  let html=svgDefs()+roadsHTML(L);
+  let html=svgDefs()+roadsHTML(L,cell);
   html+=tree(L.W*0.05,L.H*0.12,0.9)+tree(L.W*0.94,L.H*0.18,1)+tree(L.W*0.5,L.H*0.0,0.85);
   booths.forEach((b,i)=>{
     const p=L.pos[i];
@@ -397,7 +451,7 @@ function renderZone(){
       animation-delay:${i*0.04}s;z-index:${20+i}">
       ${tileFace(z.color,shadeColor(z.color,-8))}
       <div class="roof" style="left:50%;top:44%;transform:translate(-50%,-50%)">
-        ${building(z.color,b.icon,44)}
+        ${building(z.color,b.icon,isMobile?40:44)}
       </div>
       <div style="position:absolute;left:50%;top:78%;transform:translate(-50%,-50%);pointer-events:none;
         display:flex;align-items:center;gap:5px">
@@ -429,28 +483,66 @@ function openModal(b,z){
 function closeModal(){mask.classList.remove('show')}
 mask.addEventListener('click',e=>{if(e.target===mask)closeModal()});
 
-/* ================= 拖拽平移 ================= */
-let drag=null;
-sceneEl.addEventListener('pointerdown',e=>{
+/* ================= 触摸手势：拖动平移 + 双指缩放（作用在 stage 内） ================= */
+const stage=document.getElementById('stage');
+let pan=null, pinch=null;
+stage.style.touchAction='none';
+stage.addEventListener('pointerdown',e=>{
   if(e.target.closest('.tile'))return;
-  drag={x:e.clientX,y:e.clientY,ox:world.dataset.px||0,oy:world.dataset.py||0};
+  if(e.isPrimary===false)return;
+  pan={x:e.clientX,y:e.clientY,ox:+(world.dataset.px||0),oy:+(world.dataset.py||0)};
   sceneEl.classList.add('drag');
 });
 window.addEventListener('pointermove',e=>{
-  if(!drag)return;
-  const s=world.style.transform?parseFloat(world.style.transform.replace(/[^0-9.]/g,''))||1:1;
-  const px=drag.ox+(e.clientX-drag.x)/s, py=drag.oy+(e.clientY-drag.y)/s;
+  if(!pan||e.isPrimary===false)return;
+  const sc=+(world.dataset.scale||1);
+  const px=pan.ox+(e.clientX-pan.x)/sc, py=pan.oy+(e.clientY-pan.y)/sc;
   world.dataset.px=px;world.dataset.py=py;
   applyTransform();
 });
-window.addEventListener('pointerup',()=>{drag=null;sceneEl.classList.remove('drag')});
+window.addEventListener('pointerup',()=>{pan=null;pinch=null;sceneEl.classList.remove('drag')});
+function clampScale(s){return Math.max(.5,Math.min(2.5,s))}
+/* 双指捏合（touch 事件更可靠） */
+stage.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    pan=null;
+    pinch={d0:touchDist(e.touches),start:+(world.dataset.scale||1)};
+  }
+},{passive:true});
+stage.addEventListener('touchmove',e=>{
+  if(pinch&&e.touches.length===2){
+    e.preventDefault();
+    const s=clampScale(pinch.start*touchDist(e.touches)/pinch.d0);
+    world.dataset.scale=s;applyTransform();
+  }
+},{passive:false});
+stage.addEventListener('touchend',()=>{pinch=null});
+function touchDist(t){
+  const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY;
+  return Math.hypot(dx,dy)||1;
+}
 function applyTransform(){
-  const s=world.style.transform?parseFloat(world.style.transform.replace(/[^0-9.]/g,''))||1:1;
-  const px=world.dataset.px||0,py=world.dataset.py||0;
+  const s=+(world.dataset.scale||1), px=+(world.dataset.px||0),py=+(world.dataset.py||0);
   world.style.transform=`translate(${px}px,${py}px) scale(${s})`;
 }
-const origFit=fitWorld;
-fitWorld=function(){origFit();applyTransform()};
+
+/* ================= 详情抽屉下拉关闭 ================= */
+(function(){
+  let sy=null;
+  const modal=document.getElementById('modal');
+  const mask=document.getElementById('modal-mask');
+  modal.addEventListener('touchstart',e=>{sy=e.touches[0].clientY},{passive:true});
+  modal.addEventListener('touchmove',e=>{
+    if(sy===null)return;
+    const dy=e.touches[0].clientY-sy;
+    if(dy>0){modal.style.transition='none';modal.style.transform=`translateY(${dy}px)`}
+  },{passive:true});
+  modal.addEventListener('touchend',e=>{
+    const dy=e.changedTouches[0].clientY-(sy??0);sy=null;
+    modal.style.transition='';modal.style.transform='';
+    if(dy>90)closeModal();
+  });
+})();
 
 render();
 </script>
